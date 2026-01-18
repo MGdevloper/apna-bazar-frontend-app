@@ -58,6 +58,11 @@ const Register = ({ navigation }) => {
 
     return result;
   };
+  function isValidEmail(email) {
+    if (typeof email !== "string") return false;
+
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  }
 
   function handleContinue() {
     if (data.email == "" || data.fullname == "" || data.password == "" || data.role == "") {
@@ -80,10 +85,24 @@ const Register = ({ navigation }) => {
       })
       return
     }
-    
+
+    if(isValidEmail(data.email)==false){
+      Toast.show({
+        type:"error",
+        text1:"check email formet"
+      })
+      return
+    }
+      if (data.role == "customer") {
+
+        navigation.navigate("customer", data)
+      }
+      else {
+
+        navigation.navigate("shopkeeper", data)
+      }
 
 
-    
   }
 
   return (
@@ -195,24 +214,27 @@ const Register = ({ navigation }) => {
               style={styles.input}
             />
 
-            <View style={{display:'flex',flexDirection:'row',alignItems:"center"}}>
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: "center" }}>
 
               <TextInput
+              
+                maxLength={6}
 
                 value={data.password}
                 placeholder="Password"
                 placeholderTextColor="#999"
+                
                 secureTextEntry={flag}
 
                 onChangeText={(text) => setdata({ ...data, password: text })}
-                style={[styles.input,{width:"100%"}]}
+                style={[styles.input, { width: "100%" }]}
 
 
               />
 
-              <TouchableOpacity 
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} 
-                style={{position:"absolute",right:10,top:'15'}} onPress={() => setflag(prev => !prev)}>
+              <TouchableOpacity
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ position: "absolute", right: 10, top: '15' }} onPress={() => setflag(prev => !prev)}>
                 <Icon name={flag ? 'eye-outline' : 'eye-off-outline'} size={20} color='#777' />
               </TouchableOpacity>
             </View>
@@ -347,7 +369,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: '#fafafa',
     color: 'black',
-    flexShrink:0
+    flexShrink: 0
   },
 
   /* BUTTON */

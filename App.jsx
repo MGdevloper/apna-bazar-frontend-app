@@ -9,6 +9,8 @@ import Toast from 'react-native-toast-message';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
+import Customer from './src/components/Customer/Customer';
+import Shopekeeper from './src/components/Shopkeeper/Shopekeeper';
 const Stack = createNativeStackNavigator();
 
 const App = () => {
@@ -48,7 +50,7 @@ const App = () => {
     <NavigationContainer 
     
     >
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName="customer">
 
         {/* Login */}
         <Stack.Screen
@@ -64,6 +66,20 @@ const App = () => {
           options={{headerShown:false}}
           
         />
+        {/* Register2 */}
+
+        <Stack.Screen
+          name='customer'
+          component={Customer}
+          options={{headerShown:false}}
+        />
+
+        <Stack.Screen
+        name='shopkeeper'
+        component={Shopekeeper}
+        options={{headerShown:false}}
+        />
+
 
       </Stack.Navigator>
     </NavigationContainer>
