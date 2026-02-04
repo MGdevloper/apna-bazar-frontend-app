@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { request, RESULTS } from 'react-native-permissions';
 import { PERMISSIONS } from 'react-native-permissions';
 import Geolocation from 'react-native-geolocation-service';
+
 import axios from 'axios';
 
 const Customer = (route) => {

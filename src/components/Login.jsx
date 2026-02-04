@@ -83,12 +83,12 @@ const Login = ({ navigation }) => {
                 />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("forgotpassword")}>
               <Text style={styles.forgot}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
 
-          <GradientBtn text={"Log In"} padding_x={6} padding_y={6}  />
+          <GradientBtn text={"Log In"} padding_x={6} padding_y={6} />
 
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Don't have an account?</Text>
@@ -150,13 +150,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   card: {
-  
+
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
     gap: 10,
     boxShadow: '0px 1px 13px 1px #00000024',
-  
+
   },
   titleWrap: {
     alignItems: 'center',
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    
+
   },
   footerText: {
     color: '#6c7685',

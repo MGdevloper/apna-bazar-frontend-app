@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Orientation from 'react-native-orientation-locker';
 import Login from './src/components/Login';
 import Register from './src/components/Register';
-
+import Delivery from './src/components/Shopkeeper/Delivery';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -11,6 +11,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import Customer from './src/components/Customer/Customer';
 import Shopekeeper from './src/components/Shopkeeper/Shopekeeper';
+import Forgotpassword from './src/components/Forgotpassword';
+import DeliveryContext from './src/context/DeliveryContext.js'
 const Stack = createNativeStackNavigator();
 
 const App = () => {
@@ -18,6 +20,20 @@ const App = () => {
     Orientation.lockToPortrait();
   }, []);
 
+
+  const [deliverypartners, setDeliverypartners] = useState([]);
+
+  function addDeliverypartner(partner) {
+    setDeliverypartners(prev=>[...prev,partner]);
+  }
+
+  function removeDeliverypartner(partnerId) {
+    setDeliverypartners(prev=>prev.filter(partner=>partner.id!=partnerId));
+  }
+
+  function editDeliverypartner(partnerId, updatedPartner) {
+    setDeliverypartners(prev=>prev.map(partner=>partner.id===partnerId ? updatedPartner : partner));
+  }
 
   const toastConfig = {
     success: ({ text1, text2 }) => (
@@ -33,58 +49,73 @@ const App = () => {
       </View>
     ),
     error: ({ text1, text2 }) => (
-    <View style={styles.toastContainer}>
-      <View style={styles.leftBarError} />
+      <View style={styles.toastContainer}>
+        <View style={styles.leftBarError} />
 
-      <Icon name="alert-circle-outline" size={22} color="#d32f2f" />
+        <Icon name="alert-circle-outline" size={22} color="#d32f2f" />
 
-      <View style={styles.textWrap}>
-        <Text style={styles.title}>{text1}</Text>
-        {text2 ? <Text style={styles.message}>{text2}</Text> : null}
+        <View style={styles.textWrap}>
+          <Text style={styles.title}>{text1}</Text>
+          {text2 ? <Text style={styles.message}>{text2}</Text> : null}
+        </View>
       </View>
-    </View>
-  ),
+    ),
   }
-    return(
+  return (
     <>
-    <NavigationContainer 
-    
-    >
-      <Stack.Navigator initialRouteName="customer">
-
-        {/* Login */}
-        <Stack.Screen
-          name="Login"
-          component={Login}
-          options={{ headerShown: false }}
-        />
-
-        {/* Register */}
-        <Stack.Screen
-          name="Register"
-          component={Register}
-          options={{headerShown:false}}
-          
-        />
-        {/* Register2 */}
-
-        <Stack.Screen
-          name='customer'
-          component={Customer}
-          options={{headerShown:false}}
-        />
-
-        <Stack.Screen
-        name='shopkeeper'
-        component={Shopekeeper}
-        options={{headerShown:false}}
-        />
+      <DeliveryContext.Provider value={{deliverypartners, addDeliverypartner, removeDeliverypartner, editDeliverypartner}}>
 
 
-      </Stack.Navigator>
-    </NavigationContainer>
-    
-    <Toast config={toastConfig}/>
+        <NavigationContainer
+
+        >
+          <Stack.Navigator initialRouteName="Login">
+
+            {/* Login */}
+            <Stack.Screen
+              name="Login"
+              component={Login}
+              options={{ headerShown: false }}
+            />
+
+            {/* Register */}
+            <Stack.Screen
+              name="Register"
+              component={Register}
+              options={{ headerShown: false }}
+
+            />
+            {/* Register2 */}
+
+            <Stack.Screen
+              name='customer'
+              component={Customer}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name='shopkeeper'
+              component={Shopekeeper}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name='forgotpassword'
+              component={Forgotpassword}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name='delivery'
+              component={Delivery}
+              options={{ headerShown: false }}
+            />
+
+
+          </Stack.Navigator>
+        </NavigationContainer>
+
+        <Toast config={toastConfig} />
+      </DeliveryContext.Provider>
+
     </>
   );
 };
