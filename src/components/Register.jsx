@@ -10,25 +10,29 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import GradientBtn from './gradiantbtn/GradientBtn';
 import Toast from 'react-native-toast-message';
+import RegisterContext from '../context/RegisterContext.js';
 
 const Register = ({ navigation }) => {
   const [flag, setflag] = useState(true)
-  const [data, setdata] = useState({ role: "customer", fullname: "", password: "", email: "" })
+  const { registerData, setRegisterData } = useContext(RegisterContext)
+  const updateRegisterData = (updates) => {
+    setRegisterData(prev => ({ ...prev, ...updates }))
+  }
   const checkPasswordStrength = (password) => {
     const result = {
       isValid: true,
       errors: [],
     };
 
-    if (password.length < 6) {
+    if (password.length !== 6) {
       result.isValid = false;
-      result.errors.push('Password must be at least 6 characters long');
+      result.errors.push('Password must be exactly 6 characters long');
       return result
     }
 
@@ -65,7 +69,7 @@ const Register = ({ navigation }) => {
   }
 
   function handleContinue() {
-    if (data.email == "" || data.fullname == "" || data.password == "" || data.role == "") {
+    if (registerData.email == "" || registerData.fullname == "" || registerData.password == "" || registerData.role == "") {
       Toast.show({
         type: "error",
         text1: "fill all the details"
@@ -73,7 +77,7 @@ const Register = ({ navigation }) => {
       return
     }
 
-    let res = checkPasswordStrength(data.password)
+    let res = checkPasswordStrength(registerData.password)
     console.log(res)
 
     if (res.isValid == false) {
@@ -86,20 +90,20 @@ const Register = ({ navigation }) => {
       return
     }
 
-    if(isValidEmail(data.email)==false){
+    if(isValidEmail(registerData.email)==false){
       Toast.show({
         type:"error",
         text1:"check email formet"
       })
       return
     }
-      if (data.role == "customer") {
+      if (registerData.role == "customer") {
 
-        navigation.navigate("customer", data)
+        navigation.navigate("customer", registerData)
       }
       else {
 
-        navigation.navigate("shopkeeper", data)
+        navigation.navigate("shopkeeper", registerData)
       }
 
 
@@ -150,21 +154,21 @@ const Register = ({ navigation }) => {
             {/* ROLE */}
             <View style={styles.roleRow}>
               <Pressable
-                onPress={() => setdata({ ...data, role: "customer" })}
+                onPress={() => updateRegisterData({ role: "customer" })}
                 style={[
                   styles.roleCard,
-                  data.role === 'customer' && styles.roleActive,
+                  registerData.role === 'customer' && styles.roleActive,
                 ]}
               >
                 <Icon
                   name="account"
                   size={26}
-                  color={data.role === 'customer' ? '#4f9b2f' : '#777'}
+                  color={registerData.role === 'customer' ? '#4f9b2f' : '#777'}
                 />
                 <Text
                   style={[
                     styles.roleText,
-                    data.role === 'customer' && styles.roleTextActive,
+                    registerData.role === 'customer' && styles.roleTextActive,
                   ]}
                 >
                   Customer
@@ -172,21 +176,21 @@ const Register = ({ navigation }) => {
               </Pressable>
 
               <Pressable
-                onPress={() => setdata({ ...data, role: "shopkeeper" })}
+                onPress={() => updateRegisterData({ role: "shopkeeper" })}
                 style={[
                   styles.roleCard,
-                  data.role === 'shopkeeper' && styles.roleActive,
+                  registerData.role === 'shopkeeper' && styles.roleActive,
                 ]}
               >
                 <Icon
                   name="storefront-outline"
                   size={26}
-                  color={data.role === 'shopkeeper' ? '#4f9b2f' : '#777'}
+                  color={registerData.role === 'shopkeeper' ? '#4f9b2f' : '#777'}
                 />
                 <Text
                   style={[
                     styles.roleText,
-                    data.role === 'shopkeeper' && styles.roleTextActive,
+                    registerData.role === 'shopkeeper' && styles.roleTextActive,
                   ]}
                 >
                   Shopkeeper
@@ -197,20 +201,20 @@ const Register = ({ navigation }) => {
             <Text style={styles.cardTitle}>Basic Information</Text>
 
             <TextInput
-              value={data.fullname}
+              value={registerData.fullname}
               placeholder="Full Name"
               placeholderTextColor="#999"
-              onChangeText={(text) => setdata({ ...data, fullname: text })}
+              onChangeText={(text) => updateRegisterData({ fullname: text })}
               style={styles.input}
             />
 
             <TextInput
-              value={data.email}
+              value={registerData.email}
               placeholder="Email Address"
               placeholderTextColor="#999"
               keyboardType="email-address"
 
-              onChangeText={(text) => setdata({ ...data, email: text })}
+              onChangeText={(text) => updateRegisterData({ email: text })}
               style={styles.input}
             />
 
@@ -220,13 +224,13 @@ const Register = ({ navigation }) => {
               
                 maxLength={6}
 
-                value={data.password}
+                value={registerData.password}
                 placeholder="Password"
                 placeholderTextColor="#999"
                 
                 secureTextEntry={flag}
 
-                onChangeText={(text) => setdata({ ...data, password: text })}
+                onChangeText={(text) => updateRegisterData({ password: text })}
                 style={[styles.input, { width: "100%" }]}
 
 

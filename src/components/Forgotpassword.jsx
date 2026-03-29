@@ -1,5 +1,5 @@
-import { View, Text, Pressable, ScrollView, KeyboardAvoidingView } from 'react-native'
-import React from 'react'
+import { View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
+import React, { useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StyleSheet } from 'react-native'
 
@@ -7,9 +7,63 @@ import { TextInput } from 'react-native'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import LinearGradient from 'react-native-linear-gradient'
 import GradientBtn from './gradiantbtn/GradientBtn'
-const Forgotpassword = ({ navigation }) => {
+import axios from 'axios'
+import Config from 'react-native-config'
+import Toast from 'react-native-toast-message'
+const Forgotpassword = (route ) => {
+    let [email,setemail]=useState("")
+    function isValidEmail(value) {
+        if (typeof value !== "string") return false
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+    }
+   async function handlesubmit(){
+
+        if(isValidEmail(email)==false){
+            Toast.show({
+                type:"error",
+                text1:"check email formet"
+            })
+            return
+        }
+        try{
+
+            let result=await axios.post(`${Config.API_URL}/forgotpass_sendemail`,{email})
+            console.log(result);
+            
+            if(result.data.success==false)
+            {
+                Toast.show({
+                    type:"error",
+                    text1:result.data.message
+                })
+            }
+            if(result.data.success==true){
+                
+                Toast.show({
+                    type:"success",
+                    text1:result.data.message
+                })
+
+                route.navigation.navigate('otp',{email,role:"forgotpassword"})
+                return
+            }
+
+
+        }catch(err){
+            Toast.show({
+                type:"error",
+                text1:err
+            })
+            console.log('====================================');
+            console.log(err);
+            console.log('====================================');
+            return
+        }
+    }
+    useEffect(()=>{
+        console.log(email)
+    },[email])
     return (
-        // <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -27,7 +81,7 @@ const Forgotpassword = ({ navigation }) => {
                     >
                         <View style={styles.headerRow}>
                             <Pressable
-                                onPress={() => navigation.goBack()}
+                                onPress={() => route.navigation.goBack()}
                                 style={styles.backBtn}
                             >
                                 <Icon name="arrow-left" size={22} color="#2f6d1a" />
@@ -36,7 +90,7 @@ const Forgotpassword = ({ navigation }) => {
                             <View>
                                 <Text style={styles.headerTitle}>Recover password</Text>
                                 <Text style={styles.headerSubtitle}>
-                                    Enter your registered mobile number.
+                                    Enter your registered email address.
                                 </Text>
                             </View>
                         </View>
@@ -47,21 +101,21 @@ const Forgotpassword = ({ navigation }) => {
                         <View style={styles.inputrow}>
 
                             <View style={styles.iconBadge}>
-                                <Icon name="phone" size={23} color="#2f6a1b" />
-                            </View>
-                            <View style={styles.codeBox}>
-                                <Text style={styles.codeText}>+91</Text>
+                                <Icon name="email-outline" size={23} color="#2f6a1b" />
                             </View>
                             <TextInput
-                                maxLength={10}
 
-                                placeholder="Enter your mobile number"
+                            onChangeText={(t)=>setemail(t)}
+                                placeholder="Enter your email address"
                                 placeholderTextColor="#9aa3b5"
-                                keyboardType="phone-pad"
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                value={email}
                                 style={styles.input}
                             />
                         </View>
-                        <GradientBtn text={'continue'} />
+                        <GradientBtn func={handlesubmit} text={'continue'} />
                     </View>
 
                 </ScrollView>
@@ -104,24 +158,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft:5
-    },
-    codeText: {
-        fontSize: 15,
-        color: 'white',
-        fontWeight: '600',
-
-        color: '#3d4654',
-    },
-    codeBox: {
-        // paddingHorizontal: 10,
-        // paddingVertical: 14,
-        height: 32,
-        width: 40,
-        borderRadius: 10,
-        backgroundColor: '#eef2f7',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center'
     },
     input: {
         flex: 1,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView } from 'react-native';
 import {
   Image,
@@ -11,12 +11,125 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-
-import LinearGradient from 'react-native-linear-gradient';
+import keychain from 'react-native-keychain';
 import GradientBtn from "./gradiantbtn/GradientBtn"
+import axios from 'axios';
+import Config from 'react-native-config';
+import Toast from 'react-native-toast-message';
 const Login = ({ navigation }) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
+  useEffect(() => {
+
+
+    (async () => {
+      let res = await keychain.getGenericPassword()
+      
+      console.log(Config.API_URL);
+      
+      if (!res) {
+        return
+      }
+
+       let token= JSON.parse(res.password).token
+      console.log(token);
+      
+      if(!token){
+        
+        return;
+      }
+
+      try{
+        console.log("token in try",token);
+        
+        let userRes = await axios.post(`${Config.API_URL}/getuser`,{token})
+        let role=userRes.data.user.role
+        if(role=="customer"){
+            navigation.navigate("customerHome",{email:userRes.data.user.email})
+        }
+        else if(role=="shopkeeper"){
+          navigation.navigate("shopkeeperHome",{email:userRes.data.user.email})
+        }
+        else if(role=="deliverypartner"){
+          navigation.navigate("deliverypartnerHome",{email:userRes.data.user.email})
+        }
+        else{
+          return;
+        }
+        
+      }catch(err){
+        // await keychain.resetGenericPassword();
+        return;
+      }
+
+
+
+       
+
+
+
+        
+    })()
+  }, [])
+
+
+  async function handlesubmit() {
+    console.log(email, password);
+
+    if (!email || !password) {
+      Alert.alert("Please fill all the fields")
+      return;
+    }
+
+    try {
+      console.log(Config.API_URL)
+      let res = await axios.post(`${Config.API_URL}/login`, { email, password })
+      
+      if (res.data.success == false) {
+
+        Toast.show({
+          type: 'error',
+          text1: 'Login Failed',
+          text2: res.data.message,
+        });
+        return;
+      }
+
+      const userType = res?.data?.type || res?.data?.user?.type || res?.data?.role;
+
+      await keychain.setGenericPassword(  'auth' ,JSON.stringify({
+        token: res.data.token,
+      }));
+
+      if (userType == "customer") {
+        navigation.replace("customerHome", { email })
+        return;
+      }
+      if (userType == "shopkeeper") {
+        navigation.replace("shopkeeperHome", { email })
+        return;
+      }
+      if (userType == "deliverypartner") {
+        navigation.replace("deliverypartnerHome", { email })
+        return;
+      }
+
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: 'Unknown account type',
+      });
+    }
+    catch (err) {
+      Toast.show({
+        type: 'error',
+        text1: 'Network Error',
+        text2: 'Unable to reach server',
+      });
+    }
+  }
   return (
     // <KeyboardAvoidingView >
 
@@ -42,31 +155,34 @@ const Login = ({ navigation }) => {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Mobile Number</Text>
+            <Text style={styles.label}>Email Address</Text>
             <View style={styles.inputRow}>
               <View style={styles.iconBadge}>
-                <Icon name="phone" size={18} color="#2f6a1b" />
-              </View>
-              <View style={styles.codeBox}>
-                <Text style={styles.codeText}>+91</Text>
+                <Icon name="email-outline" size={18} color="#2f6a1b" />
               </View>
               <TextInput
-                maxLength={10}
-                placeholder="Enter your mobile number"
+                value={email}
+                onChangeText={(t) => setEmail(t)}
+                placeholder="Enter your email address"
                 placeholderTextColor="#9aa3b5"
-                keyboardType="phone-pad"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
                 style={styles.input}
               />
             </View>
           </View>
 
           <View style={styles.fieldGroup}>
+
             <Text style={styles.label}>Password</Text>
             <View style={styles.inputRow}>
               <View style={styles.iconBadge}>
                 <Icon name="lock" size={18} color="#2f6a1b" />
               </View>
               <TextInput
+                value={password}
+                onChangeText={(t) => setPassword(t)}
                 placeholder="Enter your password"
                 placeholderTextColor="#9aa3b5"
                 secureTextEntry={!passwordVisible}
@@ -88,12 +204,18 @@ const Login = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          <GradientBtn text={"Log In"} padding_x={6} padding_y={6} />
+          <GradientBtn func={handlesubmit} text={"Log In"} padding_x={6} padding_y={6} />
 
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Don't have an account?</Text>
             <TouchableOpacity onPress={() => navigation.navigate("Register")}>
               <Text style={styles.linkText}>Register</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Continue as Delivery Partner link at the bottom */}
+          <View style={{ alignItems: 'center', marginTop: 24 }}>
+            <TouchableOpacity onPress={() => navigation.navigate('deliverypartner')}>
+              <Text style={styles.linkText}>Continue as Delivery Partner</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -197,17 +319,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  codeBox: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: '#eef2f7',
-  },
-  codeText: {
-    fontSize: 14,
-    color: '#3d4654',
-    fontWeight: '600',
   },
   input: {
     flex: 1,

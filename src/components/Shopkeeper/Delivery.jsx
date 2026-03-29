@@ -5,10 +5,11 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import Toast from 'react-native-toast-message'
 import DeliveryContext from '../../context/DeliveryContext.js'
 import GradientBtn from '../gradiantbtn/GradientBtn'
-
+import Resetpassword from "../Resetpass.jsx"
 export default function Delivery({ navigation }) {
   const { deliverypartners = [], addDeliverypartner, removeDeliverypartner, editDeliverypartner } = useContext(DeliveryContext)
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [editingId, setEditingId] = useState(null)
 
@@ -16,6 +17,7 @@ export default function Delivery({ navigation }) {
 
   const resetForm = () => {
     setName('')
+    setEmail('')
     setPhone('')
     setEditingId(null)
   }
@@ -38,10 +40,22 @@ export default function Delivery({ navigation }) {
 
   const handleSubmit = () => {
     const trimmedName = name.trim()
+    const trimmedEmail = email.trim().toLowerCase()
     const digitsOnly = phone.replace(/[^0-9]/g, '')
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
     if (!trimmedName) {
       showError('Please enter partner name')
+      return
+    }
+
+    if (!trimmedEmail) {
+      showError('Please enter email address')
+      return
+    }
+
+    if (!emailPattern.test(trimmedEmail)) {
+      showError('Please enter a valid email address')
       return
     }
 
@@ -51,13 +65,13 @@ export default function Delivery({ navigation }) {
     }
 
     if (isEditing) {
-      editDeliverypartner(editingId, { id: editingId, name: trimmedName, phone: digitsOnly })
+      editDeliverypartner(editingId, { id: editingId, name: trimmedName, email: trimmedEmail, phone: digitsOnly })
       showSuccess('Partner updated')
     } else {
       const nextId = deliverypartners.length
         ? Math.max(...deliverypartners.map((partner) => Number(partner.id) || 0)) + 1
         : 1
-      addDeliverypartner({ id: nextId, name: trimmedName, phone: digitsOnly })
+      addDeliverypartner({ id: nextId, name: trimmedName, email: trimmedEmail, phone: digitsOnly })
       showSuccess('Partner added')
     }
 
@@ -67,10 +81,12 @@ export default function Delivery({ navigation }) {
   const startEdit = (partner) => {
     setEditingId(partner.id)
     setName(partner.name || '')
+    setEmail(partner.email || '')
     setPhone(String(partner.phone || ''))
   }
 
   const confirmRemove = (partner) => {
+    if (isEditing) return
     Alert.alert(
       'Remove Partner',
       `Remove ${partner.name || 'this partner'}?`,
@@ -120,6 +136,16 @@ export default function Delivery({ navigation }) {
             autoCapitalize="words"
           />
           <TextInput
+            keyboardType='email-address'
+            style={[styles.input, { textAlign: 'left' }]}
+            placeholder="Email Address"
+            placeholderTextColor="#7d8a99"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TextInput
             keyboardType='phone-pad'
             maxLength={10}
             style={[styles.input, { textAlign: 'left' }]}
@@ -155,13 +181,18 @@ export default function Delivery({ navigation }) {
                   <View style={styles.partnerText}>
                     <Text style={styles.partnerName}>{partner.name}</Text>
                     <Text style={styles.partnerPhone}>{partner.phone}</Text>
+                    {partner.email ? <Text style={styles.partnerEmail}>{partner.email}</Text> : null}
                   </View>
                 </View>
                 <View style={styles.partnerActions}>
                   <TouchableOpacity style={styles.editBtn} onPress={() => startEdit(partner)}>
                     <Icon name="pencil-outline" size={18} color="#2f6d1a" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.deleteBtn} onPress={() => confirmRemove(partner)}>
+                  <TouchableOpacity
+                    style={[styles.deleteBtn, isEditing ? styles.deleteBtnDisabled : null]}
+                    onPress={() => confirmRemove(partner)}
+                    disabled={isEditing}
+                  >
                     <Icon name="trash-can-outline" size={18} color="#d32f2f" />
                   </TouchableOpacity>
                 </View>
@@ -311,6 +342,11 @@ const styles = StyleSheet.create({
     color: '#5a6b7a',
     marginTop: 2,
   },
+  partnerEmail: {
+    fontSize: 13,
+    color: '#5a6b7a',
+    marginTop: 2,
+  },
   partnerActions: {
     flexDirection: 'row',
     gap: 8,
@@ -324,5 +360,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fdecec',
     padding: 8,
     borderRadius: 10,
+  },
+  deleteBtnDisabled: {
+    opacity: 0.5,
   },
 })

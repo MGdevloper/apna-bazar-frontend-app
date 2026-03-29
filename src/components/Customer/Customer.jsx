@@ -11,7 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,29 +20,60 @@ import { PERMISSIONS } from 'react-native-permissions';
 import Geolocation from 'react-native-geolocation-service';
 
 import axios from 'axios';
-
-const Customer = (route) => {
-  console.log(route);
-
-  const [phone, setPhone] = useState('');
-  const [house, setHouse] = useState('');
-  const [area, setArea] = useState('');
-  const [city, setCity] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [landmark, setLandmark] = useState('');
-  const [state, setState] = useState('')
+import RegisterContext from '../../context/RegisterContext.js';
+import Toast from 'react-native-toast-message';
+import Config from 'react-native-config';
+const Customer = ({ navigation, route }) => {
+  const { customerData, setCustomerData } = useContext(RegisterContext)
+  const { phone, house, area, city, pincode, landmark, state: customerState, latLong } = customerData
   const [lodding, setlodding] = useState(false)
+  const updateCustomerData = (updates) => {
+    setCustomerData(prev => ({ ...prev, ...updates }))
+  }
 
-  const [latLong, setLatLong] = useState({ lat: '', long: '' });
+
+  async function handleSubmit() {
+    const payload = { ...customerData, ...route?.params, role: 'customer' }
+    console.log("data goigto backend", payload);
+    
+
+    if (!phone || !house || !area || !city || !pincode || !customerState) {
+      Toast.show({ type: 'error', text1: 'Please fill all required fields', visibilityTime: 2000 })
+      return
+    }
+
+    try {
+
+      let res = await axios.post(`${Config.API_URL}/savecustomer`, payload)
+      console.log('====================================');
+      console.log(res.data);
+      console.log('====================================');
+
+      if (res.data.reason == "not verified") {
+        navigation.navigate('otp', { email: route?.params?.email,role:"customer"})
+      }
+      else if (res.data.reason == 'already exists') {
+        Toast.show({ type: 'error', text1: res.data.message, visibilityTime: 2000 })
 
 
-  let lodingref = useRef(null)
 
-  useEffect(() => {
+      }
+      else {
 
-    console.log(lodding);
+        Toast.show({type:'success', text1:'Saved successfully',visibilityTime:2000})
+        navigation.navigate('otp', { email: route?.params?.email || '',role:"customer" })
+      }
+    }
+    catch (err) {
+      console.log('====================================');
+      console.log("servererror:", err);
+      console.log('====================================');
+      return
+    }
 
-  }, [lodding])
+
+
+  }
 
   const useCurrentLocation = async () => {
     setlodding(true)
@@ -52,39 +83,43 @@ const Customer = (route) => {
         : PERMISSIONS.IOS.LOCATION_WHEN_IN_USE
 
 
-    console.log("pressed");
 
     let permissonresult = await request(permission);
 
     if (permissonresult != RESULTS.GRANTED) {
-
+      setlodding(false)
       return
     }
 
     Geolocation.getCurrentPosition(async (pos) => {
 
-      console.log(pos.coords.longitude);
-      let info = await axios.get("https://nominatim.openstreetmap.org/reverse", {
-        params: {
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-          format: "json",
-        },
-        headers: {
-          "User-Agent": "ApnaBazar/1.0 (apnabazar@gmail.com)",
-          "Accept": "application/json",
-        },
-      });
+      try {
+        let info = await axios.get("https://nominatim.openstreetmap.org/reverse", {
+          params: {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            format: "json",
+          },
+          headers: {
+            "User-Agent": "ApnaBazar/1.0 (apnabazar@gmail.com)",
+            "Accept": "application/json",
+          },
+          timeout: 15000,
+        });
 
-      setState(info.data.address.state)
-      setCity(info.data.address.city)
-      setPincode(info.data.address.postcode)
-      setArea(info.data.display_name)
-      
-      setLatLong({
-        lat: pos.coords.latitude,
-        long: pos.coords.longitude,
-      });
+        updateCustomerData({
+          state: info.data.address.state,
+          city: info.data.address.city,
+          pincode: info.data.address.postcode,
+          area: info.data.display_name,
+          latLong: {
+            lat: pos.coords.latitude,
+            long: pos.coords.longitude,
+          },
+        })
+      } catch (error) {
+        Alert.alert("Network error", "Unable to fetch address. Please try again.")
+      }
 
       setlodding(false)
     },
@@ -120,7 +155,7 @@ const Customer = (route) => {
           {/* HEADER */}
           <LinearGradient colors={['#2f6d1a', '#4f9b2f']} style={styles.header}>
             <View style={styles.headerRow}>
-              <Pressable onPress={() => { route.navigation.goBack() }} style={styles.backBtn}>
+              <Pressable onPress={() => { navigation.goBack() }} style={styles.backBtn}>
                 <Icon name="arrow-left" size={24} color="#2f6d1a" />
               </Pressable>
 
@@ -144,15 +179,15 @@ const Customer = (route) => {
               maxLength={10}
               keyboardType="number-pad"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(text) => updateCustomerData({ phone: text })}
               style={styles.input}
               placeholderTextColor={"#00000079"}
             />
             <TextInput
               placeholder="State"
 
-              value={state}
-              onChangeText={setState}
+              value={customerState}
+              onChangeText={(text) => updateCustomerData({ state: text })}
               style={styles.input}
               placeholderTextColor={"#00000079"}
             />
@@ -160,7 +195,7 @@ const Customer = (route) => {
             <TextInput
               placeholder="House / Flat / Building No."
               value={house}
-              onChangeText={setHouse}
+              onChangeText={(text) => updateCustomerData({ house: text })}
               style={styles.input}
 
               placeholderTextColor={"#00000079"}
@@ -169,7 +204,7 @@ const Customer = (route) => {
             <TextInput
               placeholder="Area / Street / Locality"
               value={area}
-              onChangeText={setArea}
+              onChangeText={(text) => updateCustomerData({ area: text })}
               style={styles.input}
 
               placeholderTextColor={"#00000079"}
@@ -178,7 +213,7 @@ const Customer = (route) => {
             <TextInput
               placeholder="City"
               value={city}
-              onChangeText={setCity}
+              onChangeText={(text) => updateCustomerData({ city: text })}
               style={styles.input}
 
               placeholderTextColor={"#00000079"}
@@ -188,7 +223,7 @@ const Customer = (route) => {
               placeholder="Pincode"
               keyboardType="number-pad"
               value={pincode}
-              onChangeText={setPincode}
+              onChangeText={(text) => updateCustomerData({ pincode: text })}
               style={styles.input}
 
               placeholderTextColor={"#00000079"}
@@ -197,7 +232,7 @@ const Customer = (route) => {
             <TextInput
               placeholder="Nearby Landmark (Optional)"
               value={landmark}
-              onChangeText={setLandmark}
+              onChangeText={(text) => updateCustomerData({ landmark: text })}
               style={styles.input}
 
               placeholderTextColor={"#00000079"}
@@ -207,12 +242,14 @@ const Customer = (route) => {
               <Icon name="crosshairs-gps" size={20} color="#2f6d1a" />
               <Text style={styles.locationText}>Use Current Address</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={handleSubmit}>
 
-            <LinearGradient
-              colors={['#2f6d1a', '#7cc957']}
-              style={styles.continueBtn}>
-              <Text style={styles.continueText}>Continue</Text>
-            </LinearGradient>
+              <LinearGradient
+                colors={['#2f6d1a', '#7cc957']}
+                style={styles.continueBtn}>
+                <Text style={styles.continueText}>Continue</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

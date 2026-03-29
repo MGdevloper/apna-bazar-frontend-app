@@ -13,25 +13,79 @@ import Geolocation from 'react-native-geolocation-service';
 import axios from 'axios'
 import { useContext } from 'react'
 import DeliveryContext from '../../context/DeliveryContext.js'
+import RegisterContext from '../../context/RegisterContext.js'
 
 import Toast from 'react-native-toast-message'
+import Config from 'react-native-config'
 const Shopekeeper = (route) => {
-
-
+  
   let {deliverypartners}=useContext(DeliveryContext)
+  const { shopkeeperData, setShopkeeperData,registerData } = useContext(RegisterContext)
+  
+  
+  const {
+    shopName,
+    categorie,
+    phone,
+    state: shopState,
+    city,
+    pincode,
+    area,
+    address,
+    latLong,
+  } = shopkeeperData
+  const updateShopkeeperData = (updates) => {
+    setShopkeeperData(prev => ({ ...prev, ...updates }))
+  }
+  async function handleSubmit(){
+    if(!shopName || !categorie || !phone || !shopState || !city || !pincode || !area || !address){
+      Toast.show({type:'error',text1:'Please fill all the fields'})
+      return
+    }
+
+    if(deliverypartners.length==0){
+      Toast.show({type:'error',text1:'Please add at least one delivery partner'})
+      return
+    }
+
+
+    try { 
+      const deliverypartnersWithRole = deliverypartners.map((partner) => ({
+        ...partner,
+        role: 'deliverypartner',
+      }))
+      const payload = {
+        ...shopkeeperData,
+        ...route.route.params,
+        deliverypartners: deliverypartnersWithRole,
+        role: 'shopkeeper',
+      }
+      let res=await axios.post(`${Config.API_URL}/saveshopekeeper`, payload)
+      console.log(res.data);
+      
+      if(res.data.success==false){
+        console.log("innnnnnnn false");
+        
+         Toast.show({
+          type:'error',
+          text1:res.data.message
+        }, )
+        
+      
+      }
+
+      if(res.data.success==true){
+        route.navigation.navigate("otp",{email:registerData.email,role:'shopkeeper'})
+      }
+    } catch (error) {
+      console.log("error while registering shopekeeper",error);
+      
+    }   
+    
+  }
 
 
   let [loading, setLoading] = useState(false)
-
-  let [categorie, setCategorie] = useState(null)
-  let [city, setCity] = useState('');
-  let [state, setState] = useState('');
-  let [pincode, setPincode] = useState('');
-  let [area, setArea] = useState('');
-  let [latLong, setLatLong] = useState({ lat: '', long: '' });
-  let [shopName, setShopName] = useState('');
-  let [phone, setPhone] = useState('');
-  let [address, setAddress] = useState('');
   let [locationpermission, setLocationpermission] = useState(false);
   const categoriesdata = [
     { label: 'Grocery', value: 'grocery' },
@@ -87,29 +141,34 @@ const Shopekeeper = (route) => {
     Geolocation.getCurrentPosition(async (pos) => {
 
       console.log(pos.coords.longitude);
-      let info = await axios.get("https://nominatim.openstreetmap.org/reverse", {
-        params: {
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-          format: "json",
-        },
-        headers: {
-          "User-Agent": "ApnaBazar/1.0 (apnabazar@gmail.com)",
-          "Accept": "application/json",
-        },
-      });
+      try {
+        let info = await axios.get("https://nominatim.openstreetmap.org/reverse", {
+          params: {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            format: "json",
+          },
+          headers: {
+            "User-Agent": "ApnaBazar/1.0 (apnabazar@gmail.com)",
+            "Accept": "application/json",
+          },
+          timeout: 15000,
+        });
 
-
-      setState(info.data.address.state)
-      setCity(info.data.address.city || info.data.address.town || info.data.address.village || info.data.address.county || info.data.address.municipality || info.data.address.region || info.data.address.district)
-      setPincode(info.data.address.postcode)
-      setArea(info.data.display_name)
-      setAddress(info.data.display_name)
-
-      setLatLong({
-        lat: pos.coords.latitude,
-        long: pos.coords.longitude,
-      });
+        updateShopkeeperData({
+          state: info.data.address.state,
+          city: info.data.address.city || info.data.address.town || info.data.address.village || info.data.address.county || info.data.address.municipality || info.data.address.region || info.data.address.district,
+          pincode: info.data.address.postcode,
+          area: info.data.display_name,
+          address: info.data.display_name,
+          latLong: {
+            lat: pos.coords.latitude,
+            long: pos.coords.longitude,
+          },
+        })
+      } catch (error) {
+        Alert.alert("Network error", "Unable to fetch address. Please try again.")
+      }
 
       setLoading(false)
     },
@@ -174,7 +233,7 @@ const Shopekeeper = (route) => {
 
             onChangeText={(e) => {
 
-              setShopName(e)
+              updateShopkeeperData({ shopName: e })
             }}
           />
 
@@ -189,7 +248,7 @@ const Shopekeeper = (route) => {
               valueField="value"
               placeholder="Select Category"
               value={categorie}
-              onChange={item => setCategorie(item.value)}
+              onChange={item => updateShopkeeperData({ categorie: item.value })}
             />
           </View>
 
@@ -201,7 +260,7 @@ const Shopekeeper = (route) => {
             placeholderTextColor="#7d8a99"
             value={phone}
             onChangeText={(t) => {
-              setPhone(t)
+              updateShopkeeperData({ phone: t })
             }}
           />
 
@@ -211,9 +270,9 @@ const Shopekeeper = (route) => {
             style={[styles.input, { textAlign: 'left' }]}
             placeholder="State"
             placeholderTextColor="#7d8a99"
-            value={state}
+            value={shopState}
             onChangeText={(t) => {
-              setState(t)
+              updateShopkeeperData({ state: t })
             }}
           />
 
@@ -223,7 +282,7 @@ const Shopekeeper = (route) => {
             placeholderTextColor="#7d8a99"
             value={city}
             onChangeText={(t) => {
-              setCity(t)
+              updateShopkeeperData({ city: t })
             }}
           />
           <TextInput
@@ -232,7 +291,7 @@ const Shopekeeper = (route) => {
             placeholderTextColor="#7d8a99"
             value={pincode}
             onChangeText={(t) => {
-              setPincode(t)
+              updateShopkeeperData({ pincode: t })
             }}
           />
           <TextInput
@@ -241,7 +300,7 @@ const Shopekeeper = (route) => {
             placeholderTextColor="#7d8a99"
             value={address}
             onChangeText={(t) => {
-              setAddress(t)
+              updateShopkeeperData({ address: t })
             }}
           />
 
@@ -261,8 +320,8 @@ const Shopekeeper = (route) => {
           </View>
 
 
-          <View style={{ marginTop: 5 }}>
-            <GradientBtn text={'Continue'} />
+          <View  style={{ marginTop: 5 }}>
+            <GradientBtn func={handleSubmit} text={'Continue'} />
           </View>
         </View>
 
