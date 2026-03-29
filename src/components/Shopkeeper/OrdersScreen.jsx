@@ -19,6 +19,8 @@ const OrdersScreen = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [updatingOrderId, setUpdatingOrderId] = useState('');
+  const [deliveryPartners, setDeliveryPartners] = useState([]);
+  const [assigningOrderId, setAssigningOrderId] = useState('');
 
   const formatDate = (isoDate) => {
     if (!isoDate) return '-';
@@ -43,6 +45,9 @@ const OrdersScreen = ({ navigation }) => {
       status: orderData.status || 'pending',
       date: formatDate(orderData.createdAt),
       createdAt: orderData.createdAt || null,
+      deliveryPartnerId: orderData.deliveryPartnerId || null,
+      deliveryPartnerName: orderData.deliveryPartnerName || '',
+      deliveryPartnerEarning: Number(orderData.deliveryPartnerEarning || 25),
       rawItems: orderData.items,
     };
   };
@@ -75,6 +80,25 @@ const OrdersScreen = ({ navigation }) => {
 
 
     getorders()
+  }, []);
+
+  useEffect(() => {
+    async function loadDeliveryPartners() {
+      try {
+        const pass = await keychain.getGenericPassword();
+        const token = JSON.parse(pass.password).token;
+        const profileRes = await axios.post(`${Config.API_URL}/getprofile`, { token });
+
+        if (profileRes.data?.success) {
+          const partners = profileRes.data?.user?.deliverypartners || [];
+          setDeliveryPartners(partners);
+        }
+      } catch (error) {
+        console.log('failed to load delivery partners', error);
+      }
+    }
+
+    loadDeliveryPartners();
   }, []);
 
   useEffect(() => {
@@ -163,6 +187,12 @@ const OrdersScreen = ({ navigation }) => {
         return '#f59e0b';
       case 'accepted':
         return '#10b981';
+      case 'assigned_to_delivery':
+        return '#0ea5e9';
+      case 'out_for_delivery':
+        return '#0284c7';
+      case 'delivered':
+        return '#0f766e';
       case 'rejected':
         return '#ef4444';
       case 'completed':
@@ -173,7 +203,8 @@ const OrdersScreen = ({ navigation }) => {
   };
 
   const getStatusLabel = (status) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    const readable = String(status || '').replaceAll('_', ' ');
+    return readable.charAt(0).toUpperCase() + readable.slice(1);
   };
 
   const updateOrderStatus = async (orderId, status) => {
@@ -210,6 +241,45 @@ const OrdersScreen = ({ navigation }) => {
       console.log('status update failed', error);
     } finally {
       setUpdatingOrderId('');
+    }
+  };
+
+  const assignDeliveryPartner = async (orderId, partner) => {
+    try {
+      setAssigningOrderId(orderId);
+      const pass = await keychain.getGenericPassword();
+      const token = JSON.parse(pass.password).token;
+
+      const res = await axios.post(`${Config.API_URL}/assigndeliverypartner`, {
+        token,
+        orderId,
+        deliveryPartnerId: partner?._id,
+      });
+
+      if (res.data?.success && res.data?.order) {
+        const formattedOrder = normalizeOrder(res.data.order);
+        if (!formattedOrder) return;
+
+        setOrders(prev => {
+          const existingIndex = prev.findIndex(
+            order => order._id === formattedOrder._id || order.id === formattedOrder.id,
+          );
+
+          if (existingIndex >= 0) {
+            const next = [...prev];
+            next[existingIndex] = formattedOrder;
+            return next;
+          }
+
+          return [formattedOrder, ...prev];
+        });
+
+        setSelectedOrder(formattedOrder);
+      }
+    } catch (error) {
+      console.log('assign delivery partner failed', error);
+    } finally {
+      setAssigningOrderId('');
     }
   };
 
@@ -325,6 +395,9 @@ const OrdersScreen = ({ navigation }) => {
             <Text style={styles.metaText}>Customer: {selectedOrder.customerName}</Text>
             <Text style={styles.metaText}>Status: {getStatusLabel(selectedOrder.status)}</Text>
             <Text style={styles.metaText}>Date: {selectedOrder.date}</Text>
+            {selectedOrder.deliveryPartnerName ? (
+              <Text style={styles.metaText}>Delivery Partner: {selectedOrder.deliveryPartnerName}</Text>
+            ) : null}
 
             <View style={styles.modalDivider} />
 
@@ -356,6 +429,28 @@ const OrdersScreen = ({ navigation }) => {
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>₹{selectedOrder.total}</Text>
             </View>
+
+            {selectedOrder.status === 'accepted' ? (
+              <>
+                <View style={styles.modalDivider} />
+                <Text style={styles.assignTitle}>Assign Delivery Partner</Text>
+                <View style={styles.assignWrap}>
+                  {deliveryPartners.length ? deliveryPartners.map((partner) => (
+                    <TouchableOpacity
+                      key={String(partner?._id || partner?.email)}
+                      style={styles.assignChip}
+                      activeOpacity={0.85}
+                      disabled={assigningOrderId === selectedOrder._id}
+                      onPress={() => assignDeliveryPartner(selectedOrder._id, partner)}
+                    >
+                      <Text style={styles.assignChipText}>{partner?.name || 'Partner'}</Text>
+                    </TouchableOpacity>
+                  )) : (
+                    <Text style={styles.assignHint}>No delivery partner found in your profile.</Text>
+                  )}
+                </View>
+              </>
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -606,6 +701,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  assignTitle: {
+    fontSize: 13,
+    color: '#1c2b1f',
+    fontWeight: '700',
+  },
+  assignWrap: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  assignChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#e8f5ec',
+    borderWidth: 1,
+    borderColor: '#b4dfc0',
+  },
+  assignChipText: {
+    color: '#116734',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  assignHint: {
+    color: '#7b827d',
+    fontSize: 12,
   },
   actionRow: {
     marginTop: 8,
